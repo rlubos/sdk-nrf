@@ -1,0 +1,11 @@
+common:
+  harness: net
+  tags: net
+  depends_on: netif
+sample:
+  description: Test Nordic CoAP server implementation
+    sample
+  name: Nordic CoAP Server
+tests:
+  test:
+    tags: net
