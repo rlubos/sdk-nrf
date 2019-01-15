@@ -62,10 +62,10 @@ static struct k_delayed_work tick;
 static bool tick_fired;
 
 /** Transport handle used for data exchange, obtained on @coap_init. */
-static coap_transport_handle_t *transport4_handle;
+static coap_transport_handle_t transport4_handle;
 
 /** Transport handle used for data exchange, obtained on @coap_init. */
-static coap_transport_handle_t *transport6_handle;
+static coap_transport_handle_t transport6_handle;
 
 static u8_t well_known_core[100];
 static const char lights_name[] = "lights";
@@ -288,9 +288,9 @@ static void app_led3_subscriber_notify(coap_msg_type_t type)
 
 		/* Set local port number to use. */
 		if (observer->p_remote->sa_family == AF_INET6) {
-			response_config.p_transport = transport6_handle;
+			response_config.transport = transport6_handle;
 		} else   {
-			response_config.p_transport = transport4_handle;
+			response_config.transport = transport4_handle;
 		}
 
 		coap_message_t *response;
@@ -358,7 +358,7 @@ static void app_led3_request_handle(coap_resource_t *resource,
 	/* Set local transport to be used to send the response.
 	 * Here, same as the one received in the request.
 	 */
-	response_config.p_transport = request->p_transport;
+	response_config.transport = request->transport;
 	/* Copy token. */
 	memcpy(&response_config.token[0], &request->token[0],
 	       request->header.token_len);
@@ -602,7 +602,7 @@ void app_well_known_core_request_handle(coap_resource_t *resource,
 	/* Set local transport to be used to send the response.
 	 * Here, same as the one received in the request.
 	 */
-	response_config.p_transport = request->p_transport;
+	response_config.transport = request->transport;
 	/* Copy token. */
 	memcpy(&response_config.token[0], &request->token[0],
 	       request->header.token_len);
@@ -766,20 +766,20 @@ static void app_coap_init(void)
 		return;
 	}
 
-	transport6_handle = local_port_list[0].p_transport;
-	transport4_handle = local_port_list[1].p_transport;
+	transport6_handle = local_port_list[0].transport;
+	transport4_handle = local_port_list[1].transport;
 
-	/* TODO VERY dirty hack, need a better way to get socket fd. */
-	fds[nfds].fd = *(int *)local_port_list[0].p_transport;
+	/* NOTE: transport_handle is the socket descriptor. */
+	fds[nfds].fd = *(int *)local_port_list[0].transport;
 	fds[nfds].events = POLLIN;
 	nfds++;
-	fds[nfds].fd = *(int *)local_port_list[1].p_transport;
+	fds[nfds].fd = *(int *)local_port_list[1].transport;
 	fds[nfds].events = POLLIN;
 	nfds++;
-	fds[nfds].fd = *(int *)local_port_list[2].p_transport;
+	fds[nfds].fd = *(int *)local_port_list[2].transport;
 	fds[nfds].events = POLLIN;
 	nfds++;
-	fds[nfds].fd = *(int *)local_port_list[3].p_transport;
+	fds[nfds].fd = *(int *)local_port_list[3].transport;
 	fds[nfds].events = POLLIN;
 	nfds++;
 

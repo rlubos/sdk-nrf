@@ -43,12 +43,12 @@ static struct sockaddr_in coap_server;
 static struct sockaddr_in coap_secure_server;
 
 /** Transport handle used for data exchange, obtained on @coap_init. */
-static coap_transport_handle_t *transport_handle;
+static coap_transport_handle_t transport_handle;
 
 /** Transport handle used for secure data exchange, obtained on
  *  @coap_security_setup.
  */
-static coap_transport_handle_t *secure_transport_handle;
+static coap_transport_handle_t secure_transport_handle;
 
 static void app_coap_request_send(void);
 static void app_coap_secure_request_send(void);
@@ -269,7 +269,7 @@ static void app_coap_request_send(void)
 	memset(&message_conf, 0x00, sizeof(message_conf));
 	message_conf.type = COAP_TYPE_CON;
 	message_conf.code = COAP_CODE_PUT;
-	message_conf.p_transport = transport_handle;
+	message_conf.transport = transport_handle;
 	message_conf.id = 0; /* Auto-generate message ID. */
 
 	message_conf.token[0] = (global_token_count >> 8) & 0xFF;
@@ -278,7 +278,7 @@ static void app_coap_request_send(void)
 
 	message_conf.token_len = 2;
 	message_conf.response_callback = app_coap_response_handle;
-	message_conf.p_transport = transport_handle;
+	message_conf.transport = transport_handle;
 
 	err_code = coap_message_new(&p_request, &message_conf);
 	if (err_code != 0) {
@@ -330,7 +330,7 @@ static void app_coap_secure_request_send(void)
 	memset(&message_conf, 0x00, sizeof(message_conf));
 	message_conf.type = COAP_TYPE_CON;
 	message_conf.code = COAP_CODE_PUT;
-	message_conf.p_transport = secure_transport_handle;
+	message_conf.transport = secure_transport_handle;
 	message_conf.id = 0; /* Auto-generate message ID. */
 
 	message_conf.token[0] = (global_token_count >> 8) & 0xFF;
@@ -339,7 +339,7 @@ static void app_coap_secure_request_send(void)
 
 	message_conf.token_len = 2;
 	message_conf.response_callback = app_coaps_response_handle;
-	message_conf.p_transport = secure_transport_handle;
+	message_conf.transport = secure_transport_handle;
 
 	err_code = coap_message_new(&p_request, &message_conf);
 	if (err_code != 0) {
@@ -410,10 +410,10 @@ static void app_coap_init(void)
 		APP_ERROR_CHECK(err_code);
 	}
 
-	transport_handle = local_port_list[0].p_transport;
+	transport_handle = local_port_list[0].transport;
 
-	/* TODO VERY dirty hack, need a better way to obtain socket fd. */
-	fds[nfds].fd = *(int *)transport_handle;
+	/* NOTE: transport_handle is the socket descriptor. */
+	fds[nfds].fd = transport_handle;
 	fds[nfds].events = POLLIN;
 	nfds++;
 
@@ -455,9 +455,9 @@ static void app_coap_security_setup(void)
 					(struct sockaddr *)&coap_secure_server);
 	APP_ERROR_CHECK(err_code);
 
-	secure_transport_handle = local_port.p_transport;
+	secure_transport_handle = local_port.transport;
 
-	/* TODO VERY dirty hack, need a better way to obtain socket fd. */
+	/* NOTE: transport_handle is the socket descriptor. */
 	fds[nfds].fd = *(int *)secure_transport_handle;
 	fds[nfds].events = POLLIN;
 	nfds++;
