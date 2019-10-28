@@ -52,6 +52,8 @@
 
 .. _`system mode section in the AT Commands reference document`: https://infocenter.nordicsemi.com/topic/ref_at_commands/REF/at_commands/mob_termination_ctrl_status/xsystemmode.html
 
+.. _`AT Commands reference`: https://infocenter.nordicsemi.com/topic/ref_at_commands/REF/at_commands/intro.html
+
 
 
 .. ### Links to the Nordic website
@@ -92,13 +94,11 @@
 
 .. ### Links to other websites and software
 
-.. _`Git`: https://git-scm.com/
+.. _Git: https://git-scm.com/
 
-.. _`GitHub`: https://github.com/
+.. _GitHub: https://github.com/
 
-.. _`GitHub fork`: https://help.github.com/en/articles/fork-a-repo
-
-.. _`GitHub duplicate`: https://help.github.com/en/articles/duplicating-a-repository
+.. _GitHub fork: https://help.github.com/en/articles/fork-a-repo
 
 .. _`Semantic Versioning 2.0.0`: https://semver.org/
 
@@ -137,6 +137,8 @@
 .. _`HIDAPI library`: https://github.com/libusb/hidapi
 .. _`HIDAPI releases`: https://github.com/libusb/hidapi/releases
 .. _`pyhidapi Python wrapper`: https://github.com/apmorton/pyhidapi
+
+.. _`mbedTLS`: https://tls.mbed.org/
 
 
 .. ### Links to Bluetooth specs
