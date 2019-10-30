@@ -32,7 +32,7 @@ enum slm_gps_at_cmd_type {
 };
 
 /** forward declaration of cmd handlers **/
-static int handle_at_gpsrun(const char *at_cmd_param);
+static int handle_at_gpsrun(const char *at_cmd, size_t param_offset);
 
 /**@brief SLM AT Command list type. */
 static slm_at_cmd_list_t m_at_list[AT_GPS_MAX] = {
@@ -241,10 +241,10 @@ static int do_gps_stop(void)
  *  AT#XGPSRUN?
  *  AT#XGPSRUN=? TEST command not supported
  */
-static int handle_at_gpsrun(const char *at_cmd_param)
+static int handle_at_gpsrun(const char *at_cmd, size_t param_offset)
 {
 	int err = -EINVAL;
-	char *at_param = (char *)at_cmd_param;
+	char *at_param = (char *)at_cmd + param_offset;
 	u16_t op;
 
 	if (*(at_param) == '=') {
@@ -252,20 +252,20 @@ static int handle_at_gpsrun(const char *at_cmd_param)
 		if (*(at_param) == '?') {
 			return err;
 		}
-		err = at_parser_params_from_str(at_param, NULL, &m_param_list);
+		err = at_parser_params_from_str(at_cmd, NULL, &m_param_list);
 		if (err < 0) {
 			return err;
 		};
-		if (at_params_valid_count_get(&m_param_list) < 1) {
+		if (at_params_valid_count_get(&m_param_list) < 2) {
 			return -EINVAL;
 		}
-		err = at_params_short_get(&m_param_list, 0, &op);
+		err = at_params_short_get(&m_param_list, 1, &op);
 		if (err < 0) {
 			return err;
 		};
 		if (op == 1) {
-			if (at_params_valid_count_get(&m_param_list) > 1) {
-				err = at_params_short_get(&m_param_list, 1,
+			if (at_params_valid_count_get(&m_param_list) > 2) {
+				err = at_params_short_get(&m_param_list, 2,
 							&client.mask);
 				if (err < 0) {
 					return err;
@@ -309,11 +309,11 @@ int slm_at_gps_parse(const u8_t *param, u8_t length)
 
 		if (strncmp(param, m_at_list[i].string_upper,
 			cmd_len) == 0) {
-			ret = m_at_list[i].handler(param + cmd_len);
+			ret = m_at_list[i].handler(param, cmd_len);
 			break;
 		} else if (strncmp(param, m_at_list[i].string_lower,
 			cmd_len) == 0) {
-			ret = m_at_list[i].handler(param + cmd_len);
+			ret = m_at_list[i].handler(param, cmd_len);
 			break;
 		}
 	}
