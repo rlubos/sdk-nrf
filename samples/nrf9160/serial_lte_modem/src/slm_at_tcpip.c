@@ -44,13 +44,15 @@ enum slm_tcpip_at_cmd_type {
 };
 
 /** forward declaration of cmd handlers **/
-static int handle_at_socket(const char *at_cmd, size_t param_offset);
-static int handle_at_bind(const char *at_cmd, size_t param_offset);
-static int handle_at_tcp_conn(const char *at_cmd, size_t param_offset);
-static int handle_at_tcp_send(const char *at_cmd, size_t param_offset);
-static int handle_at_tcp_recv(const char *at_cmd, size_t param_offset);
-static int handle_at_udp_sendto(const char *at_cmd, size_t param_offset);
-static int handle_at_udp_recvfrom(const char *at_cmd, size_t param_offset);
+static int handle_at_socket(const char *at_cmd);
+static int handle_at_bind(const char *at_cmd);
+static int handle_at_tcp_conn(const char *at_cmd);
+static int handle_at_tcp_send(const char *at_cmd);
+static int handle_at_tcp_recv(const char *at_cmd);
+static int handle_at_udp_sendto(const char *at_cmd);
+static int handle_at_udp_recvfrom(const char *at_cmd);
+
+#define MAX_TCP_CMD_LEN 32
 
 /**@brief SLM AT Command list type. */
 static slm_at_cmd_list_t m_at_list[AT_TCPIP_MAX] = {
@@ -451,38 +453,34 @@ static int do_udp_recvfrom(const char *url, u16_t port, u16_t length,
  *  AT#XSOCKET?
  *  AT#XSOCKET=? TEST command not supported
  */
-static int handle_at_socket(const char *at_cmd, size_t param_offset)
+static int handle_at_socket(const char *at_cmd)
 {
 	int err = -EINVAL;
-	char *at_param = (char *)at_cmd + param_offset;
 	u16_t op;
 
-	if (*(at_param) == '=') {
-		at_param++;
-		if (*(at_param) == '?') {
-			return err;
-		}
-		err = at_parser_params_from_str(at_cmd, NULL, &m_param_list);
-		if (err < 0) {
-			return err;
-		};
+	switch (at_parser_cmd_type_get(at_cmd)) {
+	case AT_CMD_TYPE_SET_COMMAND:
 		if (at_params_valid_count_get(&m_param_list) < 2) {
 			return -EINVAL;
 		}
+
 		err = at_params_short_get(&m_param_list, 1, &op);
 		if (err < 0) {
 			return err;
 		};
+
 		if (op == 1) {
 			u16_t type;
 
 			if (at_params_valid_count_get(&m_param_list) < 3) {
 				return -EINVAL;
 			}
+
 			err = at_params_short_get(&m_param_list, 2, &type);
 			if (err < 0) {
 				return err;
 			};
+
 			if (client.sock > 0) {
 				LOG_WRN("Socket is already opened");
 			} else {
@@ -495,15 +493,26 @@ static int handle_at_socket(const char *at_cmd, size_t param_offset)
 				err = do_socket_close(0);
 			}
 		}
-	} else if (*(at_param) == '?') {
+
+		break;
+
+	case AT_CMD_TYPE_READ_COMMAND:
 		if (client.sock != INVALID_SOCKET) {
 			sprintf(buf, "#XSOCKET: %d, %d\r\n", client.sock,
 				client.ip_proto);
 		} else {
 			sprintf(buf, "#XSOCKET: 0\r\n");
 		}
+
 		client.callback(buf);
+
 		err = 0;
+		break;
+
+	case AT_CMD_TYPE_TEST_COMMAND:
+	default:
+		err = -EINVAL;
+		break;
 	}
 
 	return err;
@@ -514,36 +523,38 @@ static int handle_at_socket(const char *at_cmd, size_t param_offset)
  *  AT#XBIND?
  *  AT#XBIND=? TEST command not supported
  */
-static int handle_at_bind(const char *at_cmd, size_t param_offset)
+static int handle_at_bind(const char *at_cmd)
 {
 	int err = -EINVAL;
-	char *at_param = (char *)at_cmd + param_offset;
 	char ip[TCPIP_MAX_URL];
 	int size = TCPIP_MAX_URL;
 	u16_t port;
 
-	if (*(at_param) == '=') {
-		at_param++;
-		if (*(at_param) == '?') {
-			return err;
-		}
-		err = at_parser_params_from_str(at_cmd, NULL, &m_param_list);
-		if (err < 0) {
-			return err;
-		};
+	switch (at_parser_cmd_type_get(at_cmd)) {
+	case AT_CMD_TYPE_SET_COMMAND:
 		if (at_params_valid_count_get(&m_param_list) < 3) {
 			return -EINVAL;
 		}
+
 		err = at_params_string_get(&m_param_list, 1, ip, &size);
 		if (err < 0) {
 			return err;
 		};
+
 		ip[size] = '\0';
 		err = at_params_short_get(&m_param_list, 2, &port);
 		if (err < 0) {
 			return err;
 		};
+
 		err = do_bind(ip, port);
+		break;
+
+	case AT_CMD_TYPE_READ_COMMAND:
+	case AT_CMD_TYPE_TEST_COMMAND:
+	default:
+		err = -EINVAL;
+		break;
 	}
 
 	return err;
@@ -554,10 +565,9 @@ static int handle_at_bind(const char *at_cmd, size_t param_offset)
  *  AT#XTCPCONN?
  *  AT#XTCPCONN=? TEST command not supported
  */
-static int handle_at_tcp_conn(const char *at_cmd, size_t param_offset)
+static int handle_at_tcp_conn(const char *at_cmd)
 {
 	int err = -EINVAL;
-	char *at_param = (char *)at_cmd + param_offset;
 	char url[TCPIP_MAX_URL];
 	int size = TCPIP_MAX_URL;
 	u16_t port;
@@ -567,35 +577,40 @@ static int handle_at_tcp_conn(const char *at_cmd, size_t param_offset)
 		return err;
 	}
 
-	if (*(at_param) == '=') {
-		at_param++;
-		if (*(at_param) == '?') {
-			return err;
-		}
-		err = at_parser_params_from_str(at_cmd, NULL, &m_param_list);
-		if (err < 0) {
-			return err;
-		};
+	switch (at_parser_cmd_type_get(at_cmd)) {
+	case AT_CMD_TYPE_SET_COMMAND:
 		if (at_params_valid_count_get(&m_param_list) < 3) {
 			return -EINVAL;
 		}
+
 		err = at_params_string_get(&m_param_list, 1, url, &size);
 		if (err < 0) {
 			return err;
 		};
+
 		url[size] = '\0';
 		err = at_params_short_get(&m_param_list, 2, &port);
 		if (err < 0) {
 			return err;
 		};
+
 		err = do_tcp_connect(url, port);
-	} else if (*(at_param) == '?') {
+		break;
+
+	case AT_CMD_TYPE_READ_COMMAND:
 		if (client.connected) {
 			client.callback("+XTCPCONN: 1\r\n");
 		} else {
 			client.callback("+XTCPCONN: 0\r\n");
 		}
+
 		err = 0;
+		break;
+
+	case AT_CMD_TYPE_TEST_COMMAND:
+	default:
+		err = -EINVAL;
+		break;
 	}
 
 	return err;
@@ -606,10 +621,9 @@ static int handle_at_tcp_conn(const char *at_cmd, size_t param_offset)
  *  AT#XTCPSEND? READ command not supported
  *  AT#XTCPSEND=? TEST command not supported
  */
-static int handle_at_tcp_send(const char *at_cmd, size_t param_offset)
+static int handle_at_tcp_send(const char *at_cmd)
 {
 	int err = -EINVAL;
-	char *at_param = (char *)at_cmd + param_offset;
 	char data[NET_IPV4_MTU];
 	int size = NET_IPV4_MTU;
 
@@ -618,24 +632,26 @@ static int handle_at_tcp_send(const char *at_cmd, size_t param_offset)
 		return err;
 	}
 
-	if (*(at_param) == '=') {
-		at_param++;
-		if (*(at_param) == '?') {
-			return err;
-		}
-		err = at_parser_params_from_str(at_cmd, NULL, &m_param_list);
-		if (err < 0) {
-			return err;
-		};
+	switch (at_parser_cmd_type_get(at_cmd)) {
+	case AT_CMD_TYPE_SET_COMMAND:
 		if (at_params_valid_count_get(&m_param_list) < 2) {
 			return -EINVAL;
 		}
+
 		err = at_params_string_get(&m_param_list, 1, data, &size);
 		if (err < 0) {
 			return err;
 		};
+
 		data[size] = '\0';
 		err = do_tcp_send(data);
+		break;
+
+	case AT_CMD_TYPE_READ_COMMAND:
+	case AT_CMD_TYPE_TEST_COMMAND:
+	default:
+		err = -EINVAL;
+		break;
 	}
 
 	return err;
@@ -646,10 +662,9 @@ static int handle_at_tcp_send(const char *at_cmd, size_t param_offset)
  *  AT#XTCPRECV? READ command not supported
  *  AT#XTCPRECV=? TEST command not supported
  */
-static int handle_at_tcp_recv(const char *at_cmd, size_t param_offset)
+static int handle_at_tcp_recv(const char *at_cmd)
 {
 	int err = -EINVAL;
-	char *at_param = (char *)at_cmd + param_offset;
 	u16_t length, time;
 
 	if (!client.connected) {
@@ -657,27 +672,30 @@ static int handle_at_tcp_recv(const char *at_cmd, size_t param_offset)
 		return err;
 	}
 
-	if (*(at_param) == '=') {
-		at_param++;
-		if (*(at_param) == '?') {
-			return err;
-		}
-		err = at_parser_params_from_str(at_cmd, NULL, &m_param_list);
-		if (err < 0) {
-			return err;
-		};
+	switch (at_parser_cmd_type_get(at_cmd)) {
+	case AT_CMD_TYPE_SET_COMMAND:
 		if (at_params_valid_count_get(&m_param_list) < 3) {
 			return -EINVAL;
 		}
+
 		err = at_params_short_get(&m_param_list, 1, &length);
 		if (err < 0) {
 			return err;
 		};
+
 		err = at_params_short_get(&m_param_list, 2, &time);
 		if (err < 0) {
 			return err;
 		};
+
 		err = do_tcp_receive(length, time);
+		break;
+
+	case AT_CMD_TYPE_READ_COMMAND:
+	case AT_CMD_TYPE_TEST_COMMAND:
+	default:
+		err = -EINVAL;
+		break;
 	}
 
 	return err;
@@ -688,10 +706,9 @@ static int handle_at_tcp_recv(const char *at_cmd, size_t param_offset)
  *  AT#XUDPSENDTO? READ command not supported
  *  AT#XUDPSENDTO=? TEST command not supported
  */
-static int handle_at_udp_sendto(const char *at_cmd, size_t param_offset)
+static int handle_at_udp_sendto(const char *at_cmd)
 {
 	int err = -EINVAL;
-	char *at_param = (char *)at_cmd + param_offset;
 	char url[TCPIP_MAX_URL];
 	u16_t port;
 	char data[NET_IPV4_MTU];
@@ -705,35 +722,39 @@ static int handle_at_udp_sendto(const char *at_cmd, size_t param_offset)
 		return err;
 	}
 
-	if (*(at_param) == '=') {
-		at_param++;
-		if (*(at_param) == '?') {
-			return err;
-		}
-		err = at_parser_params_from_str(at_cmd, NULL, &m_param_list);
-		if (err < 0) {
-			return err;
-		};
+	switch (at_parser_cmd_type_get(at_cmd)) {
+	case AT_CMD_TYPE_SET_COMMAND:
 		if (at_params_valid_count_get(&m_param_list) < 4) {
 			return -EINVAL;
 		}
+
 		size = TCPIP_MAX_URL;
 		err = at_params_string_get(&m_param_list, 1, url, &size);
 		if (err < 0) {
 			return err;
 		};
+
 		url[size] = '\0';
 		err = at_params_short_get(&m_param_list, 2, &port);
 		if (err < 0) {
 			return err;
 		};
+
 		size = NET_IPV4_MTU;
 		err = at_params_string_get(&m_param_list, 3, data, &size);
 		if (err < 0) {
 			return err;
 		};
+
 		data[size] = '\0';
 		err = do_udp_sendto(url, port, data);
+		break;
+
+	case AT_CMD_TYPE_READ_COMMAND:
+	case AT_CMD_TYPE_TEST_COMMAND:
+	default:
+		err = -EINVAL;
+		break;
 	}
 
 	return err;
@@ -744,10 +765,9 @@ static int handle_at_udp_sendto(const char *at_cmd, size_t param_offset)
  *  AT#XUDPRECVFROM? READ command not supported
  *  AT#XUDPRECVFROM=? TEST command not supported
  */
-static int handle_at_udp_recvfrom(const char *at_cmd, size_t param_offset)
+static int handle_at_udp_recvfrom(const char *at_cmd)
 {
 	int err = -EINVAL;
-	char *at_param = (char *)at_cmd + param_offset;
 	char url[TCPIP_MAX_URL];
 	int size = TCPIP_MAX_URL;
 	u16_t port, length, time;
@@ -760,36 +780,41 @@ static int handle_at_udp_recvfrom(const char *at_cmd, size_t param_offset)
 		return err;
 	}
 
-	if (*(at_param) == '=') {
-		at_param++;
-		if (*(at_param) == '?') {
-			return err;
-		}
-		err = at_parser_params_from_str(at_cmd, NULL, &m_param_list);
-		if (err < 0) {
-			return err;
-		};
+	switch (at_parser_cmd_type_get(at_cmd)) {
+	case AT_CMD_TYPE_SET_COMMAND:
 		if (at_params_valid_count_get(&m_param_list) < 5) {
 			return -EINVAL;
 		}
+
 		err = at_params_string_get(&m_param_list, 1, url, &size);
 		if (err < 0) {
 			return err;
 		};
+
 		url[size] = '\0';
 		err = at_params_short_get(&m_param_list, 2, &port);
 		if (err < 0) {
 			return err;
 		};
+
 		err = at_params_short_get(&m_param_list, 3, &length);
 		if (err < 0) {
 			return err;
 		};
+
 		err = at_params_short_get(&m_param_list, 4, &time);
 		if (err < 0) {
 			return err;
 		};
+
 		err = do_udp_recvfrom(url, port, length, time);
+		break;
+
+	case AT_CMD_TYPE_READ_COMMAND:
+	case AT_CMD_TYPE_TEST_COMMAND:
+	default:
+		err = -EINVAL;
+		break;
 	}
 
 	return err;
@@ -799,25 +824,38 @@ static int handle_at_udp_recvfrom(const char *at_cmd, size_t param_offset)
  */
 int slm_at_tcpip_parse(const u8_t *param, u8_t length)
 {
-	int ret = -ENOTSUP;
+	int ret;
+	u8_t cmd[MAX_TCP_CMD_LEN];
+	size_t cmd_len = sizeof(cmd);
 
 	ARG_UNUSED(length);
 
-	for (int i = 0; i < AT_TCPIP_MAX; i++) {
-		u8_t cmd_len = strlen(m_at_list[i].string_upper);
+	ret = at_parser_params_from_str(param, NULL, &m_param_list);
+	if (ret < 0) {
+		LOG_ERR("Failed to parse command");
+		return ret;
+	};
 
-		if (strncmp(param, m_at_list[i].string_upper,
-			cmd_len) == 0) {
-			ret = m_at_list[i].handler(param, cmd_len);
-			break;
-		} else if (strncmp(param, m_at_list[i].string_lower,
-			cmd_len) == 0) {
-			ret = m_at_list[i].handler(param, cmd_len);
-			break;
+	ret = at_params_string_get(&m_param_list, 0, cmd, &cmd_len);
+	if (ret < 0) {
+		LOG_ERR("Failed to retrieve command");
+		return ret;
+	};
+
+	if (cmd_len < 3) {
+		return -ENOTSUP;
+	}
+
+	for (int i = 0; i < AT_TCPIP_MAX; i++) {
+		u8_t len = strlen(m_at_list[i].string_upper);
+
+		if ((strncmp(cmd, m_at_list[i].string_upper, len) == 0) ||
+		    (strncmp(cmd, m_at_list[i].string_lower, len) == 0)) {
+			return m_at_list[i].handler(param);
 		}
 	}
 
-	return ret;
+	return -ENOTSUP;
 }
 
 /**@brief API to initialize TCP/IP AT commands handler

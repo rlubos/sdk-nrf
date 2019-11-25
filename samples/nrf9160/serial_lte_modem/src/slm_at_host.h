@@ -18,7 +18,7 @@
 #include <at_cmd.h>
 
 /**@brief AT command handler type. */
-typedef int (*slm_at_handler_t) (const char *at_cmd, size_t param_offset);
+typedef int (*slm_at_handler_t)(const char *at_cmd);
 
 typedef struct slm_at_cmd_list {
 	u8_t type;
