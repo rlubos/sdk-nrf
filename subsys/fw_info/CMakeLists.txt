@@ -11,7 +11,7 @@ if (CONFIG_FW_INFO OR CONFIG_IS_SECURE_BOOTLOADER)
 endif ()
 
 zephyr_linker_sources_ifdef(CONFIG_FW_INFO
-  TEXT_START
+  ROM_START
   SORT_KEY ${CONFIG_FW_INFO_OFFSET}
   fw_info.ld)
 
