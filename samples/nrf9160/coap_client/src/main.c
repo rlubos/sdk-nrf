@@ -269,6 +269,9 @@ static int wait(int timeout)
 	return 0;
 }
 
+#include <date_time.h>
+#include <time.h>
+
 void main(void)
 {
 	s64_t next_msg_time = APP_COAP_SEND_INTERVAL_MS;
@@ -287,6 +290,8 @@ void main(void)
 		printk("Failed to initialize CoAP client\n");
 		return;
 	}
+
+	date_time_update();
 
 	next_msg_time = k_uptime_get();
 
@@ -336,6 +341,24 @@ void main(void)
 		if (err < 0) {
 			printk("Invalid response, exit...\n");
 			break;
+		}
+
+		s64_t now_ms;
+		err = date_time_now(&now_ms);
+		if (err < 0) {
+			printk("Invalid time, exit...\n");
+			break;
+		} else {
+			time_t mytime = now_ms / 1000;
+			struct tm *mytm = gmtime(&mytime);
+
+			printk("%d.%d.%d %d:%d:%d\n",
+			       mytm->tm_mday,
+			       mytm->tm_mon,
+			       1900 + mytm->tm_year,
+			       mytm->tm_hour,
+			       mytm->tm_min,
+			       mytm->tm_sec);
 		}
 	}
 
