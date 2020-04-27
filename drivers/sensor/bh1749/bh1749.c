@@ -21,10 +21,10 @@ static struct device *bh1749_dev;
 
 LOG_MODULE_REGISTER(BH1749, CONFIG_SENSOR_LOG_LEVEL);
 
-static const s32_t async_init_delay[ASYNC_INIT_STEP_COUNT] = {
-	[ASYNC_INIT_STEP_RESET_CHECK] = 2,
-	[ASYNC_INIT_RGB_ENABLE] = 0,
-	[ASYNC_INIT_STEP_CONFIGURE] = 0
+static const k_timeout_t async_init_delay[ASYNC_INIT_STEP_COUNT] = {
+	[ASYNC_INIT_STEP_RESET_CHECK] = K_MSEC(2),
+	[ASYNC_INIT_RGB_ENABLE] = K_NO_WAIT,
+	[ASYNC_INIT_STEP_CONFIGURE] = K_NO_WAIT
 };
 
 static int bh1749_async_init_reset_check(struct bh1749_data *data);
