@@ -66,7 +66,7 @@ struct read_range {
 
 
 __TZ_NONSECURE_ENTRY_FUNC
-int spm_request_read(void *destination, uint32_t addr, size_t len)
+int spm_request_read_nsc(void *destination, uint32_t addr, size_t len)
 {
 	static const struct read_range ranges[] = {
 #ifdef PM_MCUBOOT_ADDRESS
@@ -101,7 +101,7 @@ int spm_request_read(void *destination, uint32_t addr, size_t len)
 
 #ifdef CONFIG_SPM_SERVICE_REBOOT
 __TZ_NONSECURE_ENTRY_FUNC
-void spm_request_system_reboot(void)
+void spm_request_system_reboot_nsc(void)
 {
 	sys_reboot(SYS_REBOOT_COLD);
 }
@@ -110,7 +110,7 @@ void spm_request_system_reboot(void)
 
 #ifdef CONFIG_SPM_SERVICE_RNG
 __TZ_NONSECURE_ENTRY_FUNC
-int spm_request_random_number(uint8_t *output, size_t len, size_t *olen)
+int spm_request_random_number_nsc(uint8_t *output, size_t len, size_t *olen)
 {
 	int err;
 
@@ -126,11 +126,12 @@ int spm_request_random_number(uint8_t *output, size_t len, size_t *olen)
 
 #ifdef CONFIG_SPM_SERVICE_FIND_FIRMWARE_INFO
 __TZ_NONSECURE_ENTRY_FUNC
-int spm_firmware_info(uint32_t fw_address, struct fw_info *info)
+int spm_firmware_info_nsc(uint32_t fw_address, struct fw_info *info)
 {
 	const struct fw_info *tmp_info;
 
 	if (info == NULL) {
+
 		return -EINVAL;
 	}
 
@@ -148,7 +149,7 @@ int spm_firmware_info(uint32_t fw_address, struct fw_info *info)
 
 #ifdef CONFIG_SPM_SERVICE_PREVALIDATE
 __TZ_NONSECURE_ENTRY_FUNC
-int spm_prevalidate_b1_upgrade(uint32_t dst_addr, uint32_t src_addr)
+int spm_prevalidate_b1_upgrade_nsc(uint32_t dst_addr, uint32_t src_addr)
 {
 	if (!bl_validate_firmware_available()) {
 		return -ENOTSUP;

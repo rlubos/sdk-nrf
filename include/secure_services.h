@@ -22,6 +22,7 @@
 
 #include <stddef.h>
 #include <zephyr/types.h>
+#include <zephyr.h>
 #include <fw_info.h>
 
 #ifdef __cplusplus
@@ -32,7 +33,7 @@ extern "C" {
  *
  * Rebooting is not available from the Non-Secure Firmware.
  */
-void spm_request_system_reboot(void);
+static inline void spm_request_system_reboot(void);
 
 
 /** Request a random number from the Secure Firmware.
@@ -50,7 +51,8 @@ void spm_request_system_reboot(void);
  * @retval 0        If successful.
  * @retval -EINVAL  If @c len is invalid. Currently, @c len must be 144.
  */
-int spm_request_random_number(uint8_t *output, size_t len, size_t *olen);
+static inline int spm_request_random_number(uint8_t *output, size_t len,
+						size_t *olen);
 
 
 /** Request a read operation to be executed from Secure Firmware.
@@ -64,7 +66,7 @@ int spm_request_random_number(uint8_t *output, size_t len, size_t *olen);
  * @retval -EINVAL  If destination is NULL, or if len is <= 0.
  * @retval -EPERM   If source is outside of allowed ranges.
  */
-int spm_request_read(void *destination, uint32_t addr, size_t len);
+static inline int spm_request_read(void *destination, uint32_t addr, size_t len);
 
 /** Search for the fw_info structure in firmware image located at address.
  *
@@ -75,7 +77,7 @@ int spm_request_read(void *destination, uint32_t addr, size_t len);
  * @retval -EINVAL  If info is NULL.
  * @retval -EFAULT  If no info is found.
  */
-int spm_firmware_info(uint32_t fw_address, struct fw_info *info);
+static inline int spm_firmware_info(uint32_t fw_address, struct fw_info *info);
 
 /** Prevalidate a B1 update
  *
@@ -89,7 +91,57 @@ int spm_firmware_info(uint32_t fw_address, struct fw_info *info);
  * @retval 0         If the upgrade is invalid.
  * @retval -ENOTSUP  If the functionality is unavailable.
  */
-int spm_prevalidate_b1_upgrade(uint32_t dst_addr, uint32_t src_addr);
+static inline int spm_prevalidate_b1_upgrade(uint32_t dst_addr, uint32_t src_addr);
+
+
+void spm_request_system_reboot_nsc(void);
+int spm_request_random_number_nsc(uint8_t *output, size_t len, size_t *olen);
+int spm_request_read_nsc(void *destination, uint32_t addr, size_t len);
+int spm_firmware_info_nsc(uint32_t fw_address, struct fw_info *info);
+int spm_prevalidate_b1_upgrade_nsc(uint32_t dst_addr, uint32_t src_addr);
+
+static inline void spm_request_system_reboot(void)
+{
+	spm_request_system_reboot_nsc();
+}
+
+static inline int spm_request_random_number(uint8_t *output, size_t len,
+					    size_t *olen)
+{
+	k_sched_lock();
+	int err = spm_request_random_number_nsc(output, len, olen);
+
+	k_sched_unlock();
+	return err;
+}
+
+static inline int spm_request_read(void *destination, uint32_t addr, size_t len)
+{
+	k_sched_lock();
+	int err = spm_request_read_nsc(destination, addr, len);
+
+	k_sched_unlock();
+	return err;
+}
+
+static inline int spm_firmware_info(uint32_t fw_address, struct fw_info *info)
+{
+	k_sched_lock();
+	int err = spm_firmware_info_nsc(fw_address, info);
+
+	k_sched_unlock();
+	return err;
+}
+
+static inline int spm_prevalidate_b1_upgrade(uint32_t dst_addr,
+					     uint32_t src_addr)
+{
+	k_sched_lock();
+	int err = spm_prevalidate_b1_upgrade_nsc(dst_addr, src_addr);
+
+	k_sched_unlock();
+	return err;
+}
 
 #ifdef __cplusplus
 }
