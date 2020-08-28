@@ -63,6 +63,7 @@ int at_comms_init(void)
 /* Provision certificate to modem */
 int cert_provision(void)
 {
+#if IS_ENABLED(CONFIG_NET_SOCKETS_OFFLOAD_TLS)
 	int err;
 	bool exists;
 	uint8_t unused;
@@ -99,6 +100,10 @@ int cert_provision(void)
 	}
 
 	return 0;
+#else
+	return tls_credential_add(TLS_SEC_TAG, TLS_CREDENTIAL_CA_CERTIFICATE,
+				  cert, sizeof(cert));
+#endif
 }
 
 /* Setup TLS options on a given socket */
@@ -134,6 +139,13 @@ int tls_setup(int fd)
 			 sizeof(tls_sec_tag));
 	if (err) {
 		printk("Failed to setup TLS sec tag, err %d\n", errno);
+		return err;
+	}
+
+	err = setsockopt(fd, SOL_TLS, TLS_HOSTNAME, "google.com",
+			 sizeof("google.com"));
+	if (err) {
+		printk("Failed to setup TLS host name, err %d\n", errno);
 		return err;
 	}
 
@@ -219,6 +231,26 @@ void main(void)
 	} while (off < HTTP_HEAD_LEN);
 
 	printk("Sent %d bytes\n", off);
+
+	struct pollfd fds;
+
+	fds.fd = fd;
+	fds.events = ZSOCK_POLLIN;
+
+	err = poll(&fds, 1, 5000);
+	if (err < 0) {
+		printk("poll() failed, err %d\n", errno);
+	} else if (err == 0) {
+		printk("poll() timeout\n");
+	} else if (fds.revents & POLLERR) {
+		printk("poll(): Socket error\n");
+	} else if (fds.revents & POLLIN) {
+		printk("poll(): Data available\n");
+	} else if (fds.revents & POLLHUP) {
+		printk("poll(): Peer closed the connection\n");
+	} else {
+		printk("poll(): Other event 0x%02x\n", fds.revents);
+	}
 
 	off = 0;
 	do {
