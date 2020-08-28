@@ -19,6 +19,7 @@ LOG_MODULE_REGISTER(app_lwm2m_client, CONFIG_APP_LOG_LEVEL);
 #include <modem/lte_lc.h>
 
 #if defined(CONFIG_LWM2M_DTLS_SUPPORT)
+#include <net/tls_credentials.h>
 #if defined(CONFIG_MODEM_KEY_MGMT)
 #include <modem/modem_key_mgmt.h>
 #endif
@@ -244,6 +245,7 @@ void main(void)
 	}
 
 #if defined(CONFIG_LWM2M_DTLS_SUPPORT)
+#if defined(CONFIG_NET_SOCKETS_OFFLOAD_TLS)
 	ret = modem_key_mgmt_write(client.tls_tag,
 				   MODEM_KEY_MGMT_CRED_TYPE_PSK,
 				   client_psk, strlen(client_psk));
@@ -261,6 +263,23 @@ void main(void)
 			client.tls_tag, MODEM_KEY_MGMT_CRED_TYPE_IDENTITY,
 			ret);
 	}
+#else
+	tls_credential_add(client.tls_tag, TLS_CREDENTIAL_PSK_ID,
+			   endpoint_name, strlen(endpoint_name));
+	if (ret < 0) {
+		LOG_ERR("Error setting cred tag %d type %d: Error %d",
+			client.tls_tag, (int)TLS_CREDENTIAL_PSK_ID,
+			ret);
+	}
+
+	tls_credential_add(client.tls_tag, TLS_CREDENTIAL_PSK,
+			   client_psk, sizeof(client_psk));
+	if (ret < 0) {
+		LOG_ERR("Error setting cred tag %d type %d: Error %d",
+			client.tls_tag, (int)TLS_CREDENTIAL_PSK,
+			ret);
+	}
+#endif
 #endif
 
 	/* setup modem */
