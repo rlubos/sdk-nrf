@@ -48,7 +48,10 @@ static struct lwm2m_ctx client;
 #include "config.h"
 #endif /* CONFIG_LWM2M_DTLS_SUPPORT */
 
-static struct k_sem quit_lock;
+static struct k_sem lwm2m_start;
+static struct k_sem lwm2m_stop;
+
+static struct k_timer restart_timer;
 
 /**@brief User interface event handler. */
 static void ui_evt_handler(struct ui_evt *evt)
@@ -190,7 +193,66 @@ static void rd_client_event(struct lwm2m_ctx *client,
 	case LWM2M_RD_CLIENT_EVENT_QUEUE_MODE_RX_OFF:
 		LOG_DBG("Queue mode RX window closed");
 		break;
+
+	case LWM2M_RD_CLIENT_EVENT_NETWORK_ERROR:
+		LOG_ERR("LwM2M engine reported a network erorr.");
+		k_sem_give(&lwm2m_stop);
+		k_timer_start(&restart_timer, K_MINUTES(10), K_NO_WAIT);
+		break;
 	}
+}
+
+#if defined(CONFIG_BSD_LIBRARY)
+static void lte_handler(const struct lte_lc_evt *const evt)
+{
+	switch (evt->type) {
+	case LTE_LC_EVT_NW_REG_STATUS:
+		if ((evt->nw_reg_status == LTE_LC_NW_REG_REGISTERED_HOME) ||
+		    (evt->nw_reg_status == LTE_LC_NW_REG_REGISTERED_ROAMING)) {
+			LOG_INF("Network registration status: %s",
+			evt->nw_reg_status == LTE_LC_NW_REG_REGISTERED_HOME ?
+			"Connected - home network" : "Connected - roaming");
+
+			k_sem_give(&lwm2m_start);
+			k_timer_stop(&restart_timer);
+		}
+		break;
+	case LTE_LC_EVT_PSM_UPDATE:
+		LOG_INF("PSM parameter update: TAU: %d, Active time: %d",
+			evt->psm_cfg.tau, evt->psm_cfg.active_time);
+		break;
+	case LTE_LC_EVT_EDRX_UPDATE: {
+		char log_buf[60];
+		ssize_t len;
+
+		len = snprintf(log_buf, sizeof(log_buf),
+			       "eDRX parameter update: eDRX: %0.2f, PTW: %0.2f",
+			       evt->edrx_cfg.edrx, evt->edrx_cfg.ptw);
+		if ((len > 0) && (len <= sizeof(log_buf))) {
+			LOG_INF("%s", log_strdup(log_buf));
+		}
+		break;
+	}
+	case LTE_LC_EVT_RRC_UPDATE:
+		LOG_INF("RRC mode: %s",
+			evt->rrc_mode == LTE_LC_RRC_MODE_CONNECTED ?
+			"Connected" : "Idle");
+		break;
+	case LTE_LC_EVT_CELL_UPDATE:
+		LOG_INF("LTE cell changed: Cell ID: %d, Tracking area: %d",
+			evt->cell.id, evt->cell.tac);
+		break;
+	default:
+		break;
+	}
+}
+#endif /* CONFIG_BSD_LIBRARY */
+
+void restart_timer_handler(struct k_timer *timer_id)
+{
+	ARG_UNUSED(timer_id);
+
+	k_sem_give(&lwm2m_start);
 }
 
 void main(void)
@@ -199,7 +261,9 @@ void main(void)
 
 	LOG_INF(APP_BANNER);
 
-	k_sem_init(&quit_lock, 0, UINT_MAX);
+	k_sem_init(&lwm2m_start, 1, 1);
+	k_sem_init(&lwm2m_stop, 0, 1);
+	k_timer_init(&restart_timer, restart_timer_handler, NULL);
 
 	ui_init(ui_evt_handler);
 
@@ -211,6 +275,10 @@ void main(void)
 
 	/* Load *all* persistent settings */
 	settings_load();
+
+#if defined(CONFIG_BSD_LIBRARY)
+	lte_lc_register_handler(lte_handler);
+#endif /* CONFIG_BSD_LIBRARY */
 
 	LOG_INF("Initializing modem.");
 	ret = lte_lc_init();
@@ -290,6 +358,10 @@ void main(void)
 	}
 #endif
 
-	lwm2m_rd_client_start(&client, endpoint_name, rd_client_event);
-	k_sem_take(&quit_lock, K_FOREVER);
+	while (1) {
+		k_sem_take(&lwm2m_start, K_FOREVER);
+		lwm2m_rd_client_start(&client, endpoint_name, rd_client_event);
+		k_sem_take(&lwm2m_stop, K_FOREVER);
+		lwm2m_rd_client_stop(&client, rd_client_event);
+	}
 }
