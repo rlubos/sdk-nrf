@@ -29,6 +29,8 @@ manifest:
       url-base: https://github.com/ThrowTheSwitch
     - name: armmbed
       url-base: https://github.com/ARMmbed
+    - name: rlubos
+      url-base: https://github.com/rlubos
 
   # If not otherwise specified, the projects below should be obtained
   # from the ncs remote.
@@ -45,8 +47,9 @@ manifest:
     # https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/zephyr/introduction/index.html
     # https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/zephyr/guides/modules.html
     - name: zephyr
-      repo-path: sdk-zephyr
-      revision: a87b995bec8717597a81e2eb8b68901dbdc889b4
+      repo-path: fw-nrfconnect-zephyr
+      revision: ncs/lwm2m/network-fault-handler
+      remote: rlubos
       import:
         # In addition to the zephyr repository itself, NCS also
         # imports the contents of zephyr/west.yml at the above
