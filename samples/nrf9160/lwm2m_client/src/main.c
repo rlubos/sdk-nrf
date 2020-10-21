@@ -38,7 +38,7 @@ BUILD_ASSERT(sizeof(CONFIG_APP_LWM2M_SERVER) > 1,
 #define APP_BANNER "Run LWM2M client"
 
 #define IMEI_LEN		15
-#define ENDPOINT_NAME_LEN	(IMEI_LEN + 8)
+#define ENDPOINT_NAME_LEN	(IMEI_LEN + 9)
 
 #define LWM2M_SECURITY_PRE_SHARED_KEY 0
 #define LWM2M_SECURITY_RAW_PUBLIC_KEY 1
@@ -392,7 +392,7 @@ void main(void)
 	/* query IMEI */
 	query_modem("AT+CGSN", imei_buf, sizeof(imei_buf));
 	/* use IMEI as unique endpoint name */
-	snprintf(endpoint_name, sizeof(endpoint_name), "nrf-%s", imei_buf);
+	snprintf(endpoint_name, sizeof(endpoint_name), "urn:imei:%s", imei_buf);
 	LOG_INF("endpoint: %s", log_strdup(endpoint_name));
 
 	/* Setup LwM2M */
