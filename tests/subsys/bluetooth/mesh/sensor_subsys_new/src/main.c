@@ -191,17 +191,17 @@ static uint32_t encoded(const struct format_spec *spec, double value)
 /** Finds the biggest float less than or equal to @c limit. */
 static float biggest_float_leq(double limit)
 {
-	float val = limit;
+	double val = limit;
 
-	return val <= limit ? val : nextafterf(val, -INFINITY);
+	return val <= limit ? val : (double)nextafterf(val, -INFINITY);
 }
 
 /** Finds the smallest float greater than or equal to @c limit. */
 static float smallest_float_geq(double limit)
 {
-	float val = limit;
+	double val = limit;
 
-	return val >= limit ? val : nextafterf(val, INFINITY);
+	return val >= limit ? val : (double)nextafterf(val, INFINITY);
 }
 
 static void check_scalar_format(const struct bt_mesh_sensor_format *format,
