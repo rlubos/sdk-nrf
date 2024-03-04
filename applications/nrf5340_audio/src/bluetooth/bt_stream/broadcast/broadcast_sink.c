@@ -288,7 +288,7 @@ static struct bt_bap_stream_ops stream_ops = {
 
 static bool parse_cb(struct bt_data *data, void *codec)
 {
-	if (data->type == BT_AUDIO_CODEC_CONFIG_LC3_CHAN_ALLOC) {
+	if (data->type == BT_AUDIO_CODEC_CFG_CHAN_ALLOC) {
 		((struct audio_codec_info *)codec)->chan_allocation = sys_get_le32(data->data);
 		return false;
 	}
