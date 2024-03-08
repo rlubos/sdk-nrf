@@ -11,6 +11,13 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(traffic_gen, CONFIG_TRAFFIC_GEN_LOG_LEVEL);
 
+#if defined(CONFIG_POSIX_API)
+#include <zephyr/posix/arpa/inet.h>
+#include <zephyr/posix/netdb.h>
+#include <zephyr/posix/unistd.h>
+#include <zephyr/posix/sys/socket.h>
+#endif
+
 #include <nrfx_clock.h>
 #include <zephyr/kernel.h>
 #include <stdio.h>
@@ -79,7 +86,7 @@ int traffic_gen_wait_for_report(struct traffic_gen_config *tg_config)
 	timeout.tv_sec = REPORT_TIMEOUT;
 	timeout.tv_usec = 0;
 
-	ret = zsock_setsockopt(tg_config->ctrl_sock_fd,
+	ret = setsockopt(tg_config->ctrl_sock_fd,
 					 SOL_SOCKET,
 					 SO_RCVTIMEO,
 					 &timeout,
@@ -90,7 +97,7 @@ int traffic_gen_wait_for_report(struct traffic_gen_config *tg_config)
 	}
 
 	if (tg_config->role == TRAFFIC_GEN_ROLE_CLIENT) {
-		bytes_received = zsock_recv(tg_config->ctrl_sock_fd,
+		bytes_received = recv(tg_config->ctrl_sock_fd,
 							  report_buffer,
 							  REPORT_BUFFER_SIZE,
 							  0);
@@ -112,7 +119,7 @@ int traffic_gen_wait_for_report(struct traffic_gen_config *tg_config)
 		LOG_ERR("Server report recv failed: %d", errno);
 	}
 
-	zsock_close(tg_config->ctrl_sock_fd);
+	close(tg_config->ctrl_sock_fd);
 
 	return 0;
 }
@@ -123,7 +130,7 @@ static int connect_to_server(struct traffic_gen_config *tg_config)
 	int sockfd;
 
 	/* Create control path socket */
-	sockfd = zsock_socket(AF_INET, SOCK_STREAM, 0);
+	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd < 0) {
 		LOG_ERR("Failed to create control path socket");
 		return -errno;
@@ -133,17 +140,17 @@ static int connect_to_server(struct traffic_gen_config *tg_config)
 	serv_addr.sin_port = htons(TRAFFIC_GEN_CTRL_PORT);
 
 	/* Convert IPv4 addresses from text to binary form */
-	if (zsock_inet_pton(AF_INET, tg_config->server_ip, &serv_addr.sin_addr) <= 0) {
+	if (inet_pton(AF_INET, tg_config->server_ip, &serv_addr.sin_addr) <= 0) {
 		LOG_ERR("Invalid address: Address not supported");
-		zsock_close(sockfd);
+		close(sockfd);
 		return -errno;
 	}
 
 	/* Connect to the TRAFFIC_GEN server */
-	if (zsock_connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+	if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
 		LOG_ERR("Failed to connect TRAFFIC_GEN server");
 		LOG_ERR("Run the TRAFFIC_GEN server in other end before running TRAFFIC_GEN app");
-		zsock_close(sockfd);
+		close(sockfd);
 		return -errno;
 	}
 
@@ -164,7 +171,7 @@ static int send_config_info_to_server(struct traffic_gen_config *tg_config)
 	config.duration = htonl(tg_config->duration);
 	config.payload_len = htonl(tg_config->payload_len);
 
-	ret = zsock_send(tg_config->ctrl_sock_fd, &config, sizeof(struct server_config), 0);
+	ret = send(tg_config->ctrl_sock_fd, &config, sizeof(struct server_config), 0);
 	if (ret < 0) {
 		LOG_ERR("Failed to send TRAFFIC_GEN config info to TRAFFIC_GEN server %d", errno);
 		return -errno;
@@ -283,7 +290,7 @@ int traffic_gen_start(struct traffic_gen_config *tg_config)
 	ret = setup_data_path(tg_config);
 	if (ret < 0) {
 		LOG_ERR("Failed to setup data path");
-		zsock_close(tg_config->ctrl_sock_fd);
+		close(tg_config->ctrl_sock_fd);
 		return -1;
 	}
 
