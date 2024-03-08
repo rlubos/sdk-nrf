@@ -11,6 +11,13 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(raw_tx_packet, CONFIG_LOG_DEFAULT_LEVEL);
 
+#if defined(CONFIG_POSIX_API)
+#include <zephyr/posix/arpa/inet.h>
+#include <zephyr/posix/netdb.h>
+#include <zephyr/posix/unistd.h>
+#include <zephyr/posix/sys/socket.h>
+#endif
+
 #include <zephyr/net/socket.h>
 #include <nrf_wifi/fw_if/umac_if/inc/default/fmac_structs.h>
 
@@ -151,7 +158,7 @@ static int setup_raw_pkt_socket(int *sockfd, struct sockaddr_ll *sa)
 	struct net_if *iface = NULL;
 	int ret;
 
-	*sockfd = zsock_socket(AF_PACKET, SOCK_RAW, IPPROTO_RAW);
+	*sockfd = socket(AF_PACKET, SOCK_RAW, IPPROTO_RAW);
 	if (*sockfd < 0) {
 		LOG_ERR("Unable to create a socket %d", errno);
 		return -1;
@@ -167,11 +174,11 @@ static int setup_raw_pkt_socket(int *sockfd, struct sockaddr_ll *sa)
 	sa->sll_ifindex = net_if_get_by_iface(iface);
 
 	/* Bind the socket */
-	ret = zsock_bind(*sockfd, (struct sockaddr *)sa, sizeof(struct sockaddr_ll));
+	ret = bind(*sockfd, (struct sockaddr *)sa, sizeof(struct sockaddr_ll));
 	if (ret < 0) {
 		LOG_ERR("Error: Unable to bind socket to the network interface:%s",
 			strerror(errno));
-		zsock_close(*sockfd);
+		close(*sockfd);
 		return -1;
 	}
 
@@ -193,8 +200,8 @@ static void fill_raw_tx_pkt_hdr(struct raw_tx_pkt_header *raw_tx_pkt)
 int wifi_send_raw_tx_pkt(int sockfd, char *test_frame,
 			size_t buf_length, struct sockaddr_ll *sa)
 {
-	return zsock_sendto(sockfd, test_frame, buf_length, 0,
-			    (struct sockaddr *)sa, sizeof(*sa));
+	return sendto(sockfd, test_frame, buf_length, 0,
+			(struct sockaddr *)sa, sizeof(*sa));
 }
 
 static int get_pkt_transmit_count(unsigned int *mode_of_transmission,
@@ -244,7 +251,7 @@ static void wifi_send_raw_tx_packets(void)
 
 	ret = get_pkt_transmit_count(&transmission_mode, &num_pkts);
 	if (ret < 0) {
-		zsock_close(sockfd);
+		close(sockfd);
 		return;
 	}
 
@@ -264,7 +271,7 @@ static void wifi_send_raw_tx_packets(void)
 		ret = wifi_send_raw_tx_pkt(sockfd, test_frame, buf_length, &sa);
 		if (ret < 0) {
 			LOG_ERR("Unable to send beacon frame: %s", strerror(errno));
-			zsock_close(sockfd);
+			close(sockfd);
 			free(test_frame);
 			return;
 		}
@@ -273,8 +280,8 @@ static void wifi_send_raw_tx_packets(void)
 			memcpy(test_frame + sizeof(struct raw_tx_pkt_header),
 			       &test_beacon_frame, sizeof(test_beacon_frame));
 
-			ret = zsock_sendto(sockfd, test_frame, buf_length, 0,
-					   (struct sockaddr *)&sa, sizeof(sa));
+			ret = sendto(sockfd, test_frame, buf_length, 0,
+					(struct sockaddr *)&sa, sizeof(sa));
 			if (ret < 0) {
 				LOG_ERR("Unable to send beacon frame: %s", strerror(errno));
 				num_failures++;
@@ -289,7 +296,7 @@ static void wifi_send_raw_tx_packets(void)
 	LOG_INF("Sent %d packets with %d failures on socket", num_pkts, num_failures);
 
 	/* close the socket */
-	zsock_close(sockfd);
+	close(sockfd);
 	free(test_frame);
 }
 
