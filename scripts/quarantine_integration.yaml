@@ -1295,3 +1295,9 @@
     - nrf52840dk/nrf52840
     - nrf5340dk/nrf5340/cpuapp
   comment: "Configurations excluded to limit resources usage in integration builds"
+
+- scenarios:
+    - sample.nrf7002eb.nrf54l15pdk.shell
+  platforms:
+    - nrf54l15pdk/nrf54l15/cpuapp
+  comment: "Till Wi-Fi RAM optimizations are merged"
