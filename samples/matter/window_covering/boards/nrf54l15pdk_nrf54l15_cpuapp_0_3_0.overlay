@@ -76,6 +76,6 @@
 	};
 };
 
-&wdt30 {
+&wdt31 {
 	status = "okay";
 };
