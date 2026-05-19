@@ -233,7 +233,7 @@ static void send_http_request(void)
 	if (IS_ENABLED(CONFIG_SAMPLE_TFM_MBEDTLS)) {
 		fd = socket(res->ai_family, SOCK_STREAM | SOCK_NATIVE_TLS, IPPROTO_TLS_1_2);
 	} else {
-		fd = socket(res->ai_family, SOCK_STREAM, IPPROTO_TLS_1_2);
+		fd = socket(res->ai_family, SOCK_STREAM, IPPROTO_TLS_1_3);
 	}
 	if (fd == -1) {
 		printk("Failed to open socket!\n");
