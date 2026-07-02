@@ -6,8 +6,11 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/sys/printk.h>
+#include <zephyr/logging/log.h>
 
 #include <mbedtls/x509_crt.h>
+
+LOG_MODULE_REGISTER(cert, LOG_LEVEL_DBG);
 
 /* DigiCert Global Root G2 (expires 2038-01-15 12:00:00) */
 static const char test_server_cert[] =
@@ -34,30 +37,34 @@ static const char test_server_cert[] =
 	"MrY=\n"
 	"-----END CERTIFICATE-----\n";
 
+struct {
+	struct mbedtls_x509_crt crt;
+	uint32_t after[80];
+} test_env;
+
 static void reproducer(void)
 {
-	mbedtls_x509_crt crt;
 	int err;
 
-	mbedtls_x509_crt_init(&crt);
+	memset(test_env.after, 0xab, sizeof(test_env.after));
 
-	/* Parsing the certificate seems to corrupt the stack with NCS crypto
-	 * (not an overflow, stack size does not seem to matter in this case).
-	 * The only thing I can think of is that parser writes out of
-	 * mbedtls_x509_crt bounds?
-	 * Does not occur with vanilla mbed TLS (upstream Zephyr).
-	 */
-	err = mbedtls_x509_crt_parse(&crt, test_server_cert, sizeof(test_server_cert));
+	LOG_HEXDUMP_DBG(test_env.after, sizeof(test_env.after), "Pre call");
+
+	mbedtls_x509_crt_init(&test_env.crt);
+
+	err = mbedtls_x509_crt_parse(&test_env.crt, test_server_cert, sizeof(test_server_cert));
 	if (err != 0) {
 		printk("Parsing error 0x%x\n", -err);
 		goto out;
 	}
 
-	printk("Cert expires at %d/%d/%d\n", crt.valid_to.day, crt.valid_to.mon,
-	       crt.valid_to.year);
+	LOG_HEXDUMP_DBG(test_env.after, sizeof(test_env.after), "Post call");
+
+	printk("Cert expires at %d/%d/%d\n", test_env.crt.valid_to.day, test_env.crt.valid_to.mon,
+	       test_env.crt.valid_to.year);
 
 out:
-	mbedtls_x509_crt_free(&crt);
+	mbedtls_x509_crt_free(&test_env.crt);
 }
 
 int main(void)
