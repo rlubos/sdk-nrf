@@ -362,6 +362,7 @@
     - libraries.libc.common.picolibc.notls
     - libraries.net_buf.buf
     - libraries.ring_buffer
+    - logging.backend.uart.multi
     - logging.immediate.*
     - logging.thread
     - message_bus.zbus.general_unittests
@@ -407,6 +408,7 @@
 
 - scenarios:
     - .*secure_storage.*
+    - benchmark.crypto.psa
     - cpp.libcxx.glibcxx.picolibc
     - drivers.can.shell
     - kernel.common
@@ -636,3 +638,11 @@
     - nrf5340dk/nrf5340/cpuapp/ns
     - nrf9160dk@0.14.0/nrf9160/ns
   comment: "FLASH overflowed"
+
+- scenarios:
+    - sample.shell.devmem_load.uart.interrupt
+  platforms:
+    - nrf54h20dk@0.9.0/nrf54h20/cpuppr
+  comment: "sample is native_sim only"
+
+
