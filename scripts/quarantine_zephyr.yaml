@@ -206,6 +206,12 @@
   comment: "https://nordicsemi.atlassian.net/browse/NCSDK-37803"
 
 - scenarios:
+    - bluetooth.hci
+  platforms:
+    - native_sim/native
+  comment: "util_hci_evt.h missing after [nrf noup] revert of ext adv report discard handling"
+
+- scenarios:
     - secure_storage.psa.its.secure_storage.custom.store
   platforms:
     - nrf52840dk/nrf52840
@@ -313,6 +319,7 @@
     - kernel.context
     - kernel.context.minimallibc
     - kernel.lifo.usage
+    - kernel.poll
     - kernel.poll.minimallibc
     - kernel.scheduler
     - kernel.scheduler.multiq
@@ -355,6 +362,7 @@
     - libraries.libc.common.picolibc.notls
     - libraries.net_buf.buf
     - libraries.ring_buffer
+    - logging.backend.uart.multi
     - logging.immediate.*
     - logging.thread
     - message_bus.zbus.general_unittests
@@ -400,6 +408,7 @@
 
 - scenarios:
     - .*secure_storage.*
+    - benchmark.crypto.psa
     - cpp.libcxx.glibcxx.picolibc
     - drivers.can.shell
     - kernel.common
@@ -457,9 +466,11 @@
   comment: "not compatible with NCS (Frank Audun Kvamtro)"
 
 - scenarios:
-    - drivers.wifi.build.spi
+    - drivers.net.wifi.build.spi
   platforms:
+    - native_sim
     - native_sim/native
+    - native_sim/native/64
   comment: "requires pulling in hal_atmel but is actually not very useful"
 
 - scenarios:
@@ -627,3 +638,9 @@
     - nrf5340dk/nrf5340/cpuapp/ns
     - nrf9160dk@0.14.0/nrf9160/ns
   comment: "FLASH overflowed"
+
+- scenarios:
+    - sample.shell.devmem_load.uart.interrupt
+  platforms:
+    - nrf54h20dk@0.9.0/nrf54h20/cpuppr
+  comment: "sample is native_sim only"
