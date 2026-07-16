@@ -206,6 +206,12 @@
   comment: "https://nordicsemi.atlassian.net/browse/NCSDK-37803"
 
 - scenarios:
+    - bluetooth.hci
+  platforms:
+    - native_sim/native
+  comment: "util_hci_evt.h missing after [nrf noup] revert of ext adv report discard handling"
+
+- scenarios:
     - secure_storage.psa.its.secure_storage.custom.store
   platforms:
     - nrf52840dk/nrf52840
@@ -313,6 +319,7 @@
     - kernel.context
     - kernel.context.minimallibc
     - kernel.lifo.usage
+    - kernel.poll
     - kernel.poll.minimallibc
     - kernel.scheduler
     - kernel.scheduler.multiq
